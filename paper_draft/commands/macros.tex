@@ -1,0 +1,47 @@
+%%%%% PROJECT-SPECIFIC MACROS %%%%%
+% Define your project-specific terms here
+% Import with: \input{commands/macros}
+
+\usepackage{xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MODEL NAMES (post-training gradient, same family)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\base}{\textsc{Base}\xspace}
+\newcommand{\instruct}{\textsc{Instruct}\xspace}
+\newcommand{\rlm}{\textsc{RL-Reasoning}\xspace}
+\newcommand{\qwenbase}{\textsc{Qwen2.5-1.5B}\xspace}
+\newcommand{\qweninst}{\textsc{Qwen2.5-1.5B-Instruct}\xspace}
+\newcommand{\rdistill}{\textsc{DeepSeek-R1-Distill-Qwen-1.5B}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DATASET NAMES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\arc}{\textsc{ARC-Challenge}\xspace}
+\newcommand{\gsm}{\textsc{GSM8K}\xspace}
+\newcommand{\strat}{\textsc{StrategyQA}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PROTOCOL / EXPERIMENT NAMES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\rotcert}{\textsc{Rotating-Certainty}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% FEEDBACK TYPES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\generic}{\texttt{generic}\xspace}
+\newcommand{\challenge}{\texttt{challenge}\xspace}
+\newcommand{\hint}{\texttt{hint}\xspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ABBREVIATIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\ie}{i.e.,\xspace}
+\newcommand{\eg}{e.g.,\xspace}
+\newcommand{\itoc}{$i\!\rightarrow\!c$\xspace}
+\newcommand{\ctoi}{$c\!\rightarrow\!i$\xspace}

@@ -1,0 +1,82 @@
+\section{Introduction}
+\label{sec:intro}
+
+When a deployed language model is corrected, handed a fresh fact, or shown that its first
+answer was wrong, we want it to listen. Yet a growing intuition in the community is that the
+very training that makes models useful assistants---reinforcement learning (RL) from human
+feedback and, more recently, RL on verifiable rewards---also makes them stubborn: the model
+appears to decide where its turn is going before it starts writing, and then refuses to be
+moved. If true, this would be a direct reliability and safety problem. The models we put in
+front of users in high-stakes, multi-turn settings would be exactly the ones \emph{least}
+able to absorb a correction once the conversation is underway---the ``lost-in-conversation''
+failure.
+
+\para{The hypothesis.} This paper tests a specific, three-part version of that intuition,
+posed as a research question: do RL/post-trained LLMs \emph{pre-commit} to the answer they
+will give---encoding it early and resisting revision when new information arrives---more than
+their base counterparts? And can we \emph{rotate} which sub-fact of a decomposable question
+is held certain to \emph{redistribute} the model's uncertainty onto the remaining parts? We
+separate this into three claims. \textbf{(C1)} Pre-planning exists: the final answer is
+decodable from internal state before it is emitted. \textbf{(C2)} RL increases
+pre-commitment and reduces reactivity, both internally (the answer is encoded earlier) and
+behaviorally (the model revises less). \textbf{(C3)} Rotating certainty redistributes
+uncertainty---and RL models redistribute less.
+
+\para{The gap.} Each ingredient has been studied, but never together on the comparison that
+the hypothesis is actually about. Interpretability work firmly establishes C1: probes on the
+prompt hidden state predict a response's length, answer, and correctness before the first
+token~\citep{dong2025emergent,pal2023future,bigelow2025planning}. But that work does not
+isolate RL---it never contrasts a matched base model against its RL-trained descendant.
+Conversely, the behavioral literature on revision and sycophancy (\eg ``Try Again''
+prompting, self-correction, FlipFlop challenges) measures reactivity directly but never ties
+it to an internal pre-commitment probe, and it disagrees on the \emph{direction} of the
+deficit: some report RL-induced \emph{under}-reaction and answer
+repetition~\citep{ufo2025,kumar2024score}, others report widespread \emph{over}-reaction that
+is not monotonic in RLHF~\citep{laban2023flipflop}. Finally, C3 has no precedent: no prior
+work rotates what is held certain across a question to test whether uncertainty actually
+spreads.
+
+\para{Our approach.} We supply the missing contrast. We assemble a matched post-training
+gradient of a \emph{single} model family---\qwenbase (base), \qweninst (SFT + RLHF/DPO), and
+\rdistill (distilled from R1's RL reasoning traces)---so that architecture and tokenizer are
+held fixed and post-training intensity is the variable. On the \emph{same} items we run three
+experiments: (1) a two-turn \textbf{reactivity} test that injects content-free pushback or a
+genuine hint and measures whether the model revises (C2b); (2) a \textbf{commitment-earliness
+probe} that decodes the model's own final answer from its prompt hidden state and along the
+generation timeline (C1, C2a); and (3) a \textbf{rotating-certainty} protocol on decomposable
+\strat questions that measures how much answer entropy moves when one sub-fact is held certain
+(C3).
+
+\para{What we find.} The results invert the hypothesis. It is the \emph{base} model, not the
+RL model, that most knows the answer it wants to give. The probe decodes the base model's
+final answer from its prompt hidden state at \textbf{87\%} balanced accuracy (chance 25\%),
+falling to 71\% for instruct and to near-chance \textbf{33\%} for the RL-reasoning model.
+Behaviorally the base model is the most rigid: it revises only \textbf{2\%} of the time when
+handed a genuinely informative hint, versus $\sim$47\% for both post-trained models
+($p\approx10^{-27}$). Holding a sub-fact certain redistributes the base model's uncertainty
+by $-0.32$ bits ($p\approx10^{-13}$) but leaves the reasoning model's entropy essentially
+untouched ($p=0.84$). Post-training does not increase pre-commitment---it moves the
+commitment point \emph{later} and makes the model reactive, at the cost (for plain RLHF) of
+introducing the opposite failure, sycophantic over-reaction.
+
+\para{Contributions.}
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=2pt]
+    \item We provide the first matched base-vs-RL \emph{pre-planning-probe} contrast,
+    decoding each model's own answer from its prompt representation, and show that internal
+    pre-commitment \emph{decreases} monotonically with post-training (0.87 $\rightarrow$ 0.71
+    $\rightarrow$ 0.33), with the commitment point moving later along generation.
+    \item We tie this internal measure to behavior on two tasks, showing that the base model
+    is the consistently rigid one while the two post-trained models exhibit the two opposite
+    reactivity failures the literature flagged---instruct over-reacts (sycophancy), the
+    reasoning model is selective on \arc but over-reacts on \gsm.
+    \item We introduce and run the first test of \emph{rotating certainty}, showing that
+    holding a sub-fact certain redistributes answer uncertainty---strongly for the base
+    model, marginally for instruct, and not at all for the reasoning model.
+    \item We release code, raw outputs, and figures for all three experiments, with logged
+    parse-failure rates and bootstrap/Wilcoxon statistics, so the contrast is reproducible.
+\end{itemize}
+
+The rest of the paper reviews related work (\secref{sec:related}), details our models,
+datasets, and metrics (\secref{sec:method}), presents the three experiments
+(\secref{sec:results}), and discusses what the inverted result means and where it stops
+(\secref{sec:discussion}).

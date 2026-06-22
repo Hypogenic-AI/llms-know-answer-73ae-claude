@@ -1,0 +1,43 @@
+{
+  "gsm8k": {
+    "n": 1319,
+    "split": "test",
+    "fields": [
+      "question",
+      "answer"
+    ]
+  },
+  "hotpotqa": {
+    "n": 2000,
+    "split": "validation(sample)",
+    "fields": [
+      "id",
+      "question",
+      "answer",
+      "type",
+      "level",
+      "supporting_facts"
+    ]
+  },
+  "arc_challenge": {
+    "n": 1172,
+    "split": "test",
+    "fields": [
+      "id",
+      "question",
+      "choices",
+      "answerKey"
+    ]
+  },
+  "strategyqa": {
+    "n": 687,
+    "fields": [
+      "qid",
+      "term",
+      "description",
+      "question",
+      "answer",
+      "facts"
+    ]
+  }
+}

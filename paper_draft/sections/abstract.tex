@@ -1,0 +1,19 @@
+A popular intuition holds that reinforcement-learning (RL) post-training makes large
+language models (LLMs) ``lock in'' the answer they intend to give, leaving them less able
+than base models to react to information that arrives mid-conversation. We test this
+hypothesis directly using a matched post-training gradient of one model family
+(\qwenbase: base $\rightarrow$ instruct/RLHF $\rightarrow$ RL-reasoning), with three
+experiments that measure behavioral reactivity to new information, the internal earliness
+of answer commitment via hidden-state probes, and the redistribution of answer uncertainty
+when a sub-fact is held certain. Our headline finding inverts the hypothesis: it is the
+\emph{base} model that most ``knows the answer it wants to give.'' A linear probe decodes
+the base model's own final answer from its prompt hidden state at 87\% balanced accuracy
+(chance 25\%), versus 71\% for instruct and only 33\% for the RL-reasoning model, which
+decides through generation rather than pre-encoding. Behaviorally, the base model is the
+most rigid, changing its answer just 2\% of the time when handed a genuinely informative
+hint ($p\approx10^{-27}$), while post-trained models revise $\sim$47\% of the time.
+Post-training thus \emph{reduces} internal pre-commitment and \emph{increases} reactivity,
+though plain RLHF over-corrects into sycophantic flipping. Holding a sub-fact certain
+redistributes uncertainty strongly for the base model ($-0.32$ bits, $p\approx10^{-13}$)
+but not at all for the reasoning model. The ``pre-plans, cannot react'' deficit is real,
+but it belongs to base models and to information arriving after commitment.

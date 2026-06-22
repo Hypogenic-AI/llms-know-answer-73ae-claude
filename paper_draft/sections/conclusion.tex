@@ -1,0 +1,27 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We set out to test whether RL post-training makes LLMs pre-commit to their answers and react
+less to new information, using a matched base$\rightarrow$instruct$\rightarrow$RL-reasoning
+gradient of a single model family. Within this family the hypothesis is \textbf{inverted}.
+RL/post-training does not increase answer pre-commitment or reduce reactivity---it
+\emph{reduces} internal pre-commitment (the answer decoded from the prompt falls from $0.87$
+in the base model to $0.71$ for instruct to $0.33$, near chance, for the reasoning model) and
+\emph{increases} reactivity. The ``knows-the-answer / cannot-react'' property is real, but it
+belongs to the \emph{base} model---rigid on both \arc and \gsm---and to information that
+arrives \emph{after} commitment. Among post-trained models the reactivity \emph{direction} is
+task- and correctness-dependent (beneficially selective on \arc, over-reactive on \gsm), so
+the deficit has no single direction; its only invariant is base-model rigidity. Finally,
+rotating certainty does redistribute uncertainty, confirming C3, but only where the answer is
+prompt-driven---strongly in the base model and not at all in the reasoning model.
+
+\para{Key takeaway.} The model that most ``knows the answer it wants to give'' is the one with
+the \emph{least} post-training, and the deficit is about \emph{when} information arrives
+relative to the model's internal commitment point.
+
+\para{Future work.} Three directions follow. First, replicate at 7B and on a clean RL ablation
+(\eg Qwen2.5-base vs SimpleRL-Zoo, vs Qwen-UFO) to separate RL from reasoning distillation.
+Second, causally steer the late-layer ``answer direction'' found in Experiment~2 to test
+whether forcing earlier commitment \emph{induces} base-like rigidity. Third, extend rotating
+certainty to multi-hop QA (\eg HotpotQA) and test whether it can serve as a decoding-time
+intervention that surfaces a reasoning model's residual per-hop uncertainty.

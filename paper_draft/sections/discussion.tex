@@ -1,0 +1,67 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\para{A single mechanism explains all three experiments.} The probe (\secref{sec:res2}) is
+the hinge. The base model encodes its answer in the prompt representation before it generates
+($0.87$ decodable). This one fact predicts its behavior everywhere else. It is rigid: because
+the answer is already fixed by the prompt, feedback \emph{appended after} the answer---whether
+empty pushback ($0.17$ change) or a genuine hint ($0.02$ change)---cannot move it
+(\secref{sec:res1}). Yet its uncertainty is highly shaped by \emph{what is in the prompt}:
+placing a fact \emph{before} the answer redistributes its entropy by $0.32$ bits
+(\secref{sec:res3}). Both behaviors follow from the same cause---the answer is a function of
+the prompt representation. Information in the prompt shapes the commitment; information after
+it does not. This resolves what looks like a contradiction between Experiment~1 (base ignores
+a hint) and Experiment~3 (base is strongly moved by a fact): the difference is whether the
+information arrives before or after the model has committed.
+
+\para{Post-training moves commitment later.} Instruct decides during generation, which makes
+it reactive---but plain RLHF makes it \emph{indiscriminately} so. It over-reacts, abandoning
+correct answers under content-free challenge ($\Delta^{c\rightarrow i}$ up to $0.38$). This is
+the sycophancy/FlipFlop failure~\citep{laban2023flipflop}, the opposite of pre-commitment. The
+reasoning model commits latest of all (probe $0.33$, at chance) and is both the most selective
+reactor and the most robust in its uncertainty: it reasons over the whole question rather than
+reading its answer off the prompt. On the hypothesis's own terms, it ``knows the answer it
+wants to give'' the \emph{least}.
+
+\para{Reconciling the contested direction.} Our \emph{internal} mechanism is clean and
+monotonic, but the \emph{behavioral} reactivity direction among post-trained models depends on
+the task and on whether the model was right to begin with. On \arc, where models are often
+wrong and the hint is informative, the reasoning model reacts beneficially; on \gsm, where it
+is usually right and feedback is content-free, the same model over-reacts and breaks correct
+solutions. What is invariant across tasks is \emph{base-model rigidity}. This is exactly the
+``contested direction'' the literature flagged~\citep{ufo2025,kumar2024score,laban2023flipflop}:
+under- and over-reaction coexist and are selected by conditions. We therefore report both
+rather than claiming a single direction, and we locate the two classic failure modes at
+opposite ends of one post-training axis---UFO/SCoRe-style under-reaction in the \emph{base}
+model, FlipFlop-style over-reaction in \emph{instruct}.
+
+\para{Limitations.} We are honest about the scope of these claims.
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item \textbf{One family, one scale (1.5B).} Lineage is matched, but \instruct and \rlm
+    differ in the \emph{type} of post-training (RLHF vs reasoning distillation), not a clean RL
+    ablation. The result should be confirmed at 7B and on other families (\eg SimpleRL-Zoo,
+    Qwen-UFO).
+    \item \textbf{Interface differs by model} (base$=$transcript, others$=$chat), because base
+    models have no chat mode. This is inherent to the comparison but a confound for the
+    \emph{absolute} reactivity rates in Experiment~1. The internal probe (Experiment~2),
+    measured identically across models, is the cleaner contrast---and it agrees.
+    \item \textbf{Low \arc accuracy for \rlm (37\%)} reflects a math-distilled model on science
+    multiple-choice under a 640-token budget (reasoning is sometimes truncated). Because the
+    probe targets the model's own answer, this does not bias Experiment~2, but turn-1 accuracy
+    should be read with care.
+    \item \textbf{Coarse entropy.} Experiment~3 estimates entropy from $K=6$ samples per item;
+    we rely on 120-item aggregates and paired tests, which are robust, and replaced a
+    noise-inflated per-item $|\Delta H|$ metric with signed bootstrap-CI reductions.
+    \item \textbf{Heuristics.} Greedy decoding with a fixed token budget and sentence-level
+    \strat fact-splitting are heuristics; parse-failure rates ($\leq6\%$, mostly the reasoning
+    model) are logged and reported, never silently dropped.
+\end{itemize}
+
+\para{Broader implications.} The ``pre-plans and cannot react'' property that motivates
+safety concern is real, but it is a property of \emph{base/pretrained} models and of
+information that arrives \emph{after} the model has committed. RL post-training largely
+\emph{mitigates} it---at the cost, for plain RLHF, of the opposite failure. Practically, this
+suggests the right lever for mid-conversation correctability is not avoiding RL but choosing a
+post-training recipe that decides late \emph{and} discriminately, as the reasoning model does
+on \arc. It also suggests rotating certainty could become a decoding-time probe for residual
+per-hop uncertainty---useful precisely where a model's answer is prompt-driven.

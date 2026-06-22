@@ -1,0 +1,184 @@
+[
+  {
+    "stem": "emergent_response_planning",
+    "title": "Emergent Response Planning in LLMs",
+    "matched": "Emergent Response Planning in LLMs",
+    "arxiv_id": "2502.06258v3",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2502.06258v3",
+    "abs_url": "http://arxiv.org/abs/2502.06258v3",
+    "kb": 1835,
+    "status": "ok"
+  },
+  {
+    "stem": "do_lms_plan_ahead",
+    "title": "Do language models plan ahead for future tokens",
+    "matched": "Do language models plan ahead for future tokens?",
+    "arxiv_id": "2404.00859v2",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2404.00859v2",
+    "abs_url": "http://arxiv.org/abs/2404.00859v2",
+    "kb": 1673,
+    "status": "ok"
+  },
+  {
+    "stem": "internal_planning_horizon_branch",
+    "title": "Internal Planning in Language Models Characterizing Horizon and Branch Awareness",
+    "matched": "Internal Planning in Language Models: Characterizing Horizon and Branch Awareness",
+    "arxiv_id": "2509.25260v2",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2509.25260v2",
+    "abs_url": "http://arxiv.org/abs/2509.25260v2",
+    "kb": 2867,
+    "status": "ok"
+  },
+  {
+    "stem": "recursive_introspection",
+    "title": "Recursive Introspection Teaching Language Model Agents How to Self-Improve",
+    "matched": "Recursive Introspection: Teaching Language Model Agents How to Self-Improve",
+    "arxiv_id": "2407.18219v2",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2407.18219v2",
+    "abs_url": "http://arxiv.org/abs/2407.18219v2",
+    "kb": 4574,
+    "status": "ok"
+  },
+  {
+    "stem": "flipflop_are_you_sure",
+    "title": "Are You Sure Challenging LLMs Leads to Performance Drops in The FlipFlop Experiment",
+    "matched": "Are You Sure? Challenging LLMs Leads to Performance Drops in The FlipFlop Experiment",
+    "arxiv_id": "2311.08596v2",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2311.08596v2",
+    "abs_url": "http://arxiv.org/abs/2311.08596v2",
+    "kb": 540,
+    "status": "ok"
+  },
+  {
+    "stem": "truth_decay_sycophancy",
+    "title": "Truth Decay Quantifying Multi-Turn Sycophancy in Language Models",
+    "matched": "TRUTH DECAY: Quantifying Multi-Turn Sycophancy in Language Models",
+    "arxiv_id": "2503.11656v1",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2503.11656v1",
+    "abs_url": "http://arxiv.org/abs/2503.11656v1",
+    "kb": 520,
+    "status": "ok"
+  },
+  {
+    "stem": "overconfidence_changing_minds",
+    "title": "Overconfidence in Initial Choices and Underconfidence Under Criticism Modulate Changing Minds in LLMs",
+    "matched": "How Overconfidence in Initial Choices and Underconfidence Under Criticism Modulate Change of Mind in Large Language Models",
+    "arxiv_id": "2507.03120v1",
+    "overlap": 0.75,
+    "pdf_url": "https://arxiv.org/pdf/2507.03120v1",
+    "abs_url": "http://arxiv.org/abs/2507.03120v1",
+    "kb": 8417,
+    "status": "ok"
+  },
+  {
+    "stem": "measuring_sycophancy_multiturn",
+    "title": "Measuring Sycophancy of Language Models in Multi-turn Dialogues",
+    "matched": "Measuring Sycophancy of Language Models in Multi-turn Dialogues",
+    "arxiv_id": "2505.23840v4",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2505.23840v4",
+    "abs_url": "http://arxiv.org/abs/2505.23840v4",
+    "kb": 1313,
+    "status": "ok"
+  },
+  {
+    "stem": "cot_uq",
+    "title": "CoT-UQ Improving Response-wise Uncertainty Quantification in LLMs with Chain-of-Thought",
+    "matched": "CoT-UQ: Improving Response-wise Uncertainty Quantification in LLMs with Chain-of-Thought",
+    "arxiv_id": "2502.17214v2",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2502.17214v2",
+    "abs_url": "http://arxiv.org/abs/2502.17214v2",
+    "kb": 1081,
+    "status": "ok"
+  },
+  {
+    "stem": "lost_in_multiturn_curriculum_rl",
+    "title": "Mitigating Lost in Multi-turn Conversation via Curriculum Reinforcement Learning",
+    "matched": "Mitigating Lost in Multi-turn Conversation via Curriculum RL with Verifiable Accuracy and Abstention Rewards",
+    "arxiv_id": "2510.18731v3",
+    "overlap": 0.8,
+    "pdf_url": "https://arxiv.org/pdf/2510.18731v3",
+    "abs_url": "http://arxiv.org/abs/2510.18731v3",
+    "kb": 566,
+    "status": "ok"
+  },
+  {
+    "stem": "not_all_thoughts_equal",
+    "title": "Not All Thoughts are Generated Equal Efficient LLM Reasoning Multi-Turn Reinforcement Learning",
+    "matched": "Not All Thoughts are Generated Equal: Efficient LLM Reasoning via Multi-Turn Reinforcement Learning",
+    "arxiv_id": "2505.11827v2",
+    "overlap": 1.0,
+    "pdf_url": "https://arxiv.org/pdf/2505.11827v2",
+    "abs_url": "http://arxiv.org/abs/2505.11827v2",
+    "kb": 2835,
+    "status": "ok"
+  },
+  {
+    "stem": "reasoning_strength_planning",
+    "matched": "On Reasoning Strength Planning in Large Reasoning Models",
+    "arxiv_id": "2506.08390v2",
+    "pdf_url": "https://arxiv.org/pdf/2506.08390v2",
+    "abs_url": "http://arxiv.org/abs/2506.08390v2",
+    "kb": 11982,
+    "status": "ok"
+  },
+  {
+    "stem": "score_self_correct_rl",
+    "matched": "Training Language Models to Self-Correct via Reinforcement Learning",
+    "arxiv_id": "2409.12917v2",
+    "pdf_url": "https://arxiv.org/pdf/2409.12917v2",
+    "abs_url": "http://arxiv.org/abs/2409.12917v2",
+    "kb": 850,
+    "status": "ok"
+  },
+  {
+    "stem": "whats_the_plan_implicit_planning",
+    "matched": "What's the plan? Metrics for implicit planning in LLMs and their application to rhyme generation and question answering",
+    "arxiv_id": "2601.20164v2",
+    "pdf_url": "https://arxiv.org/pdf/2601.20164v2",
+    "abs_url": "http://arxiv.org/abs/2601.20164v2",
+    "kb": 13626,
+    "status": "ok"
+  },
+  {
+    "stem": "uncertainty_profiles_decomposition",
+    "matched": "Uncertainty Profiles for LLMs: Uncertainty Source Decomposition and Adaptive Model-Metric Selection",
+    "arxiv_id": "2505.07309v1",
+    "pdf_url": "https://arxiv.org/pdf/2505.07309v1",
+    "abs_url": "http://arxiv.org/abs/2505.07309v1",
+    "kb": 1369,
+    "status": "ok"
+  },
+  {
+    "stem": "future_lens",
+    "matched": "Future Lens: Anticipating Subsequent Tokens from a Single Hidden State",
+    "arxiv_id": "2311.04897v1",
+    "pdf_url": "https://arxiv.org/pdf/2311.04897v1",
+    "abs_url": "http://arxiv.org/abs/2311.04897v1",
+    "kb": 3034,
+    "status": "ok"
+  },
+  {
+    "stem": "detecting_planning_lms",
+    "matched": "Detecting and Characterizing Planning in Language Models",
+    "arxiv_id": "2508.18098v1",
+    "pdf_url": "https://arxiv.org/pdf/2508.18098v1",
+    "abs_url": "http://arxiv.org/abs/2508.18098v1",
+    "kb": 912,
+    "status": "ok"
+  },
+  {
+    "stem": "try_again_multiturn",
+    "matched": "A Simple \"Try Again\" Can Elicit Multi-Turn LLM Reasoning",
+    "arxiv_id": "2507.14295v2",
+    "pdf_url": "https://arxiv.org/pdf/2507.14295v2",
+    "status": "ok"
+  }
+]

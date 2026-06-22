@@ -1,0 +1,912 @@
+You are an academic paper writer. Generate a complete NEURIPS style paper
+based on the experiment results provided.
+
+════════════════════════════════════════════════════════════════════════════════
+                         IMPORTANT: BEFORE YOU START
+════════════════════════════════════════════════════════════════════════════════
+
+Before writing any content, you MUST complete these steps:
+
+1. READ THE SKILL: Review the paper-writer skill at .claude/skills/paper-writer/SKILL.md
+2. READ THE STYLE GUIDE: Study templates/paper_writing/lab_style_guide.md carefully
+3. REVIEW EXAMPLES: Browse paper_examples/ for formatting and language patterns:
+   - Look at sections/1.introduction.tex for language style
+   - Look at tables/*.tex for table formatting
+   - Look at commands/*.tex for macro usage
+4. VERIFY COMMAND TEMPLATES: Command templates (math.tex, general.tex, macros.tex) are pre-copied to paper_draft/commands/
+
+CRITICAL: Reference example papers for FORMATTING and LANGUAGE STYLE only.
+Do NOT copy content, phrasing, or narrative structure from the example papers.
+The examples are in a different research domain - focus only on presentation style.
+
+════════════════════════════════════════════════════════════════════════════════
+                            EXPERIMENT REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+# LLMs Know the Answer They Want to Give — Research Report
+
+**Date:** 2026-06-22 · **Domain:** Artificial Intelligence · **Models:** Qwen2.5-1.5B family
+(base / instruct / RL-reasoning), real local inference on NVIDIA RTX A6000.
+
+---
+
+## 1. Executive Summary
+
+We tested whether **RL/post-trained LLMs pre-commit to the answer they will give and are
+therefore less able to react to new information than base LLMs** — the submitter's hypothesis —
+and whether **rotating which sub-fact is held certain redistributes a model's uncertainty**.
+Using a matched post-training gradient of the *same* model family (base → instruct/RLHF →
+RL-reasoning), three experiments measured (1) behavioral reactivity to new information, (2) the
+internal earliness of answer commitment via hidden-state probes, and (3) uncertainty
+redistribution under rotated certainty.
+
+**The headline finding inverts the stated hypothesis.** It is the **base** model — not the
+RL model — that most "knows the answer it wants to give." A linear probe decodes the base
+model's final answer from its **prompt hidden state with 87% balanced accuracy** (chance 25%),
+versus 71% for instruct and only **33% for the RL-reasoning model**, which decides its answer
+*through* generation rather than pre-encoding it. Behaviorally, the base model is the **most
+rigid**: it changes its answer only 2% of the time when handed a genuinely informative hint
+(vs ~47% for both post-trained models, p≈10⁻²⁷). Post-training does **not** increase
+pre-commitment — it **reduces** it. The two post-trained models differ in *how* they react:
+instruct **over-reacts** (sycophantic, flips correct→incorrect 33–38% under content-free
+pushback) while the RL-reasoning model is the most **selective** (reacts to good information,
+resists empty pushback). For uncertainty (Exp 3), the base model's answer entropy is the most
+**redistributable** by injected certainty (−0.32 bits when a hop is fixed, p≈10⁻¹³), while the
+RL-reasoning model's is essentially **immovable** (≈0 bits, p=0.84).
+
+**Practical implication:** the "pre-plans and can't react" property the hypothesis describes is
+**real, but it is a property of base/pretrained models and of information that arrives *after*
+the model has committed**. RL post-training largely *mitigates* it — at the cost (for plain
+RLHF) of introducing the opposite failure, sycophantic over-reaction.
+
+---
+
+## 2. Research Question & Motivation
+
+**Hypothesis (submitter).** RL-fine-tuned LLMs pre-plan the end of their turn and so react less
+to new information than base LLMs; rotating what is held certain across a question may force the
+model to distribute uncertainty across its parts.
+
+Three separable claims:
+- **C1 — Pre-planning exists:** the answer is internally decodable before it is emitted.
+- **C2 — RL increases pre-commitment / reduces reactivity** (internal C2a + behavioral C2b).
+- **C3 — Rotating certainty redistributes uncertainty** (novel; untested in the literature).
+
+**Why it matters.** If post-training makes deployed models lock in their intended answer, they
+would be the *least* able to absorb corrections or newly revealed facts mid-conversation — a
+direct reliability/safety concern (the "lost-in-conversation" failure). **Gap:** prior work
+establishes C1 (Emergent Response Planning; Future Lens) but never isolates RL with a matched
+base contrast; reactivity work (UFO, SCoRe, FlipFlop) is purely behavioral and never ties to
+internal pre-commitment; and the *direction* of the deficit is contested (RL→under-react vs.
+widespread over-reaction). **C3 has no precedent.** We supply the missing base-vs-RL
+pre-planning-probe contrast and the first test of C3.
+
+---
+
+## 3. Experimental Setup
+
+### Models (matched post-training gradient, same lineage)
+| key | HF id | post-training stage |
+|-----|-------|---------------------|
+| base | `Qwen/Qwen2.5-1.5B` | none (pretrained only) |
+| instruct | `Qwen/Qwen2.5-1.5B-Instruct` | SFT + RLHF/DPO |
+| rl | `deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B` | distilled from R1's RL reasoning traces |
+
+Same architecture/tokenizer lineage → the systematic difference is post-training intensity.
+Each model is run in its **native interface** (base = plain transcript, since no chat template
+exists; instruct/rl = their chat templates, multi-turn). bf16, greedy decoding for commitment
+measures, temperature 0.7 sampling for entropy. Seeds fixed (42; 123 for Exp 3 sampling).
+
+### Datasets (pre-gathered, local)
+ARC-Challenge (science MC, clean letter answers; Exp 1 & 2), GSM8K (numeric; Exp 1 robustness),
+StrategyQA (decomposable yes/no with a `facts` chain; Exp 3).
+
+### Experiments & metrics
+- **Exp 1 — Reactivity (C2b).** Two-turn: model answers → feedback injected → answers again.
+  Feedback ∈ {`generic` (UFO "that's incorrect, try again" — no info), `challenge` (FlipFlop
+  "are you sure?"), `hint` (genuine information toward the correct answer)}. Metrics: answer
+  change rate, flip rates i→c (good fix) / c→i (over-react). N=200 ARC items × 3 feedback types.
+- **Exp 2 — Commitment-earliness probe (C1+C2a).** Greedy-generate → parse the model's *own*
+  final letter. A balanced logistic-regression probe (80/20 split) predicts that letter from
+  the **prompt-end** hidden state (all layers) and along the generation timeline. N=440 A–D
+  ARC items. Prompt-position accuracy ≫ chance ⇒ answer pre-encoded.
+- **Exp 3 — Rotating certainty (C3).** StrategyQA `facts` split into two hops (A, B).
+  Conditions rotate which is held certain: `baseline`, `+A`, `+B`. Uncertainty = predictive
+  binary entropy of the yes/no answer over K=6 samples (model-agnostic). N=120 items.
+
+### Statistics
+Bootstrap 95% CIs (10k resamples), Fisher exact (Exp 1), Wilcoxon signed-rank (Exp 3 paired
+reductions), Mann-Whitney (cross-model). Raw outputs in `results/`, figures in `figures/`.
+
+---
+
+## 4. Results
+
+### Exp 1 — Reactivity to new information (ARC, N=200)
+
+Answer **change rate** turn1→turn2 (95% CI), and turn-1 accuracy:
+
+| model | turn-1 acc | generic | challenge | hint |
+|-------|-----------:|--------:|----------:|-----:|
+| base | 0.65 | **0.17** [.12,.22] | 0.43 [.35,.50] | **0.02** [.01,.04] |
+| instruct | 0.72 | 0.52 [.44,.59] | 0.56 [.49,.64] | 0.47 [.40,.54] |
+| rl | 0.37 | 0.47 [.41,.53] | 0.43 [.36,.50] | 0.46 [.39,.54] |
+
+Fisher exact: base vs instruct and base vs rl differ hugely under **generic** (p=2.6×10⁻¹³,
+3.1×10⁻¹⁰) and **hint** (p=4.3×10⁻²⁸, 3.8×10⁻²⁷). **The base model barely revises — and almost
+entirely ignores a genuinely informative hint appended after its answer (2% change).**
+
+**Flip direction** (`figures/exp1_flipdir_arc.png`) reveals *how* each reacts:
+
+| | generic i→c / c→i | hint i→c / c→i |
+|---|---|---|
+| base | 0.06 / 0.04 | 0.02 / 0.00 |
+| instruct | 0.11 / **0.33** | 0.25 / 0.20 |
+| rl | **0.24** / 0.11 | **0.30** / 0.08 |
+
+Instruct (RLHF) **over-reacts**: under content-free pushback it flips correct→incorrect 33%
+(challenge: 38%) — classic sycophancy. The RL-reasoning model is the most **selective**: it
+fixes wrong answers (i→c) far more than it breaks correct ones (c→i), especially given a hint
+(0.30 vs 0.08).
+
+#### Exp 1 robustness — GSM8K (numeric, N=150)
+
+turn-1 accuracy: base 0.22, instruct 0.67, **rl 0.77** (the math-distilled reasoning model is
+best at math). Change rates (and c→i over-reaction):
+
+| model | generic | challenge | hint* | dominant flip |
+|-------|--------:|----------:|------:|---------------|
+| base | 0.15 | 0.13 | 0.08 | — (rigid) |
+| instruct | 0.16 | 0.18 | 0.07 | — (rigid) |
+| rl | **0.57** | 0.51 | 0.56 | **c→i 0.35–0.39 (over-reacts)** |
+
+\*The GSM8K "hint" is non-informative ("re-check your arithmetic") — unlike ARC's answer-pointing
+hint — so it functions as a third content-free nudge; GSM8K therefore mainly probes reactivity to
+*content-free* feedback. Fisher: base/instruct vs rl differ at p≤5.5×10⁻¹² on every condition;
+base vs instruct is **not** significant (p>0.3). **Two findings replicate / extend:** (i) the
+**base model is rigid on both tasks** (the most consistent result); (ii) the *direction* of
+post-training's reactivity effect is **task- and correctness-dependent** — here the high-accuracy
+RL-reasoning model **over-reacts**, re-deriving and breaking its (mostly correct) solutions under
+empty pushback, the mirror image of its *selective* behavior on ARC.
+
+### Exp 2 — Answer pre-encoding (ARC, N=440; chance = 0.25)
+
+Probe accuracy predicting the model's **own** final answer:
+
+| model | **prompt-position** acc (best layer) | self-consistency (acc vs gold) |
+|-------|------------------------:|-------------------------------:|
+| base | **0.873** | 0.67 |
+| instruct | 0.712 | 0.68 |
+| rl | **0.331** | 0.39 |
+
+`figures/exp2_layer_sweep.png`: the base model's answer becomes strongly decodable from the
+prompt hidden state in late layers (→0.87); instruct →0.71; **the RL-reasoning model stays near
+chance at every layer** — its answer is not pre-encoded. `figures/exp2_timeline.png` (mid-layer
+trajectory) shows base commits **early** (0.72 by 25% of generation), instruct commits **late**
+(rises only after 75%), and rl's answer is decodable (mid-layer) only at the very end.
+**Monotonic with post-training: more post-training ⇒ the answer is committed *later*.**
+
+### Exp 3 — Rotating certainty (StrategyQA, N=120; entropy in bits)
+
+| model | H(baseline) | H(+A) | H(+B) | ΔH(+A) | ΔH(+B) | Wilcoxon p |
+|-------|------------:|------:|------:|-------:|-------:|-----------:|
+| base | 0.722 | 0.404 | 0.471 | **+0.318** | **+0.250** | 1.8×10⁻¹³ |
+| instruct | 0.420 | 0.341 | 0.327 | +0.079 | +0.093 | 0.019 |
+| rl | 0.555 | 0.607 | 0.528 | −0.052 | +0.027 | 0.84 (n.s.) |
+
+`figures/exp3_rotating.png`: fixing a hop **redistributes** uncertainty — strongly for the base
+model (large, significant entropy drop; CIs clear of 0), marginally for instruct, and **not at
+all** for the RL-reasoning model (its answer entropy is robust to injected sub-fact certainty;
+it reasons through the question regardless). Base vs rl reduction: Mann-Whitney p=8.6×10⁻⁹.
+
+---
+
+## 5. Analysis & Discussion
+
+**A coherent, three-experiment story that inverts the hypothesis.** The mechanism (Exp 2)
+explains the behavior (Exp 1 & 3):
+
+- The **base** model encodes its answer in the prompt representation before generating
+  (Exp 2: 0.87). It is therefore behaviorally **rigid** — it ignores both empty pushback (0.17)
+  and genuine hints (0.02) delivered *after* it has answered (Exp 1) — and yet its uncertainty
+  is highly **shaped by what is in the prompt** (Exp 3: −0.32 bits when a fact is prepended).
+  This is precisely "pre-plans from the prompt, can't react to information arriving mid-turn,"
+  the property the hypothesis describes — but it belongs to the **base** model.
+- **Post-training moves the commitment point later.** Instruct decides during generation
+  (Exp 2 timeline), which makes it reactive — but plain RLHF makes it *indiscriminately* so:
+  it **over-reacts**, abandoning correct answers under content-free challenge (Exp 1: c→i up to
+  0.38). This is the sycophancy/FlipFlop failure, the *opposite* of pre-commitment.
+- The **RL-reasoning** model commits latest of all (Exp 2: 0.33, ≈chance) and is the most
+  **selective** reactor (Exp 1: high i→c, low c→i) and the most **robust** in its uncertainty
+  (Exp 3: injecting one hop's certainty does not move its answer entropy — it reasons over the
+  whole question). It "knows the answer it wants to give" the *least*.
+
+**Reconciling Exp 1 and Exp 3 for the base model.** The base model ignores a hint *appended
+after* its turn-1 answer (Exp 1) yet is strongly moved by a fact placed *in the prompt before
+it answers* (Exp 3). Both follow from Exp 2: the answer is determined by the prompt
+representation. Information in the prompt shapes the commitment; information after it does not.
+
+**Task-dependence of the behavioral direction (from GSM8K).** Exp 1's *internal* mechanism
+(Exp 2) is clean and monotonic, but the *behavioral* reactivity direction among post-trained
+models depends on task and on whether the model was right to begin with. On ARC (where models
+are often wrong and the hint is informative) the RL-reasoning model reacts *beneficially*; on
+GSM8K (where it is usually right and feedback is content-free) the same model *over-reacts* and
+breaks correct solutions. What is invariant across tasks is **base-model rigidity**. This is
+exactly the "contested direction" the literature flagged — under- and over-reaction coexist and
+are selected by conditions — so we report both rather than claiming a single direction.
+
+**Relation to the literature.** This is the base-vs-RL pre-planning-probe contrast the review
+flagged as missing, and it lands on the **mitigation** side of the contested-direction debate:
+RL post-training reduces internal pre-commitment. We also reproduce both failure modes the
+literature warns coexist — UFO/SCoRe-style under-reaction (here, the **base** model) and
+FlipFlop-style over-reaction (here, **instruct**) — and show they sit at opposite ends of the
+same post-training axis. On C3, rotating certainty **does** redistribute uncertainty, but the
+effect is largest in the base model and vanishes in the reasoning model.
+
+---
+
+## 6. Limitations
+
+- **One model family, one scale (1.5B).** Lineage is matched, but `instruct` and `rl` differ in
+  *type* of post-training (RLHF vs reasoning distillation), not a clean RL ablation; results
+  should be confirmed at 7B and on other families (SimpleRL-Zoo, Qwen-UFO).
+- **Interface differs by model** (base=transcript, others=chat) because base models have no chat
+  mode — inherent to the comparison, but a confound for Exp 1 absolute rates. The internal probe
+  (Exp 2), measured identically, is the cleaner contrast and agrees.
+- **RL-reasoning model's low ARC accuracy (37%)** reflects a math-distilled model on science MC
+  under a 640-token budget (reasoning sometimes truncated); the probe targets the model's *own*
+  answer so this does not bias Exp 2, but turn-1 accuracy should be read with care.
+- **Exp 3 entropy from K=6 samples** is coarse per item; we rely on 120-item aggregates and
+  paired tests (robust), and replaced the noise-inflated per-item |ΔH| metric with signed
+  bootstrap-CI reductions.
+- **Decoding budget** (greedy, fixed max tokens) and StrategyQA fact-splitting (sentence-level)
+  are heuristics; parse-failure rates are logged (≤6%, mostly the reasoning model) and reported,
+never silently dropped.
+
+---
+
+## 7. Conclusions & Next Steps
+
+**Answer to the research question.** Within this matched family, the hypothesis is **inverted**:
+RL/post-training does **not** increase answer pre-commitment or reduce reactivity — it **reduces**
+internal pre-commitment (answer decoded from the prompt: base 0.87 → instruct 0.71 → RL 0.33)
+and **increases** reactivity. The "knows-the-answer / can't-react" property is real but belongs
+to the **base** model (rigid on both ARC and GSM8K) and to information arriving *after*
+commitment. Among post-trained models the reactivity *direction* is task- and correctness-
+dependent — beneficially selective on ARC, over-reactive on GSM8K — so the deficit has no single
+direction, only one invariant: base-model rigidity.
+**Rotating certainty does redistribute uncertainty (C3 confirmed), but only where the answer is
+prompt-driven — strongly in the base model, not in the reasoning model.**
+
+**Next steps:** (1) replicate at 7B and on a clean RL ablation (Qwen2.5-base vs SimpleRL-Zoo,
+vs Qwen-UFO); (2) causally steer the late-layer "answer direction" found in Exp 2 to test
+whether forcing earlier commitment *induces* base-like rigidity; (3) extend C3 to multi-hop QA
+(HotpotQA) and test whether rotating certainty can be used as a *decoding-time* intervention to
+surface a reasoning model's residual per-hop uncertainty.
+
+---
+
+## References (used resources)
+Emergent Response Planning in LLMs (2502.06258); Future Lens (2311.04897); Reasoning-Strength
+Planning (2506.08390); "Try Again"/UFO (2507.14295); SCoRe (2409.12917); FlipFlop (2311.08596);
+Uncertainty Profiles (2505.07309). Datasets: ARC-Challenge, GSM8K, StrategyQA. Tooling:
+PyTorch 2.12, Transformers 5.12, scikit-learn 1.9, SciPy 1.18. Full literature synthesis in
+`literature_review.md`; resource catalog in `resources.md`.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            RESEARCH PLAN
+════════════════════════════════════════════════════════════════════════════════
+
+# Research Plan: LLMs Know the Answer They Want to Give
+
+## Research Question
+
+Do RL/post-trained LLMs **pre-commit** to the answer they will give — encoding it early
+and resisting revision when new information arrives — *more* than their base counterparts?
+And can we **rotate which sub-answer is held certain** across a decomposable question to
+**redistribute the model's uncertainty** onto the remaining parts?
+
+The hypothesis (from the submitter) has three separable claims:
+- **C1 — Pre-planning exists:** the final answer is decodable from internal state *before*
+  it is emitted.
+- **C2 — RL increases pre-commitment / reduces reactivity:** post-trained (instruct / RL-
+  reasoning) models commit earlier and revise less under new information than the base model.
+- **C3 — Rotating certainty redistributes uncertainty (novel):** fixing one sub-fact of a
+  multi-hop question as "given" measurably moves the model's residual uncertainty onto the
+  other hop, and RL models are less able to perform this redistribution.
+
+---
+
+## Motivation & Novelty Assessment
+
+### Why This Research Matters
+If RL post-training makes models "lock in" the answer they intend to give, then exactly the
+models we deploy for high-stakes interaction are the *least* able to incorporate corrections,
+hints, or newly revealed facts mid-conversation — a direct reliability and safety problem
+(the "lost-in-conversation" failure). Understanding *whether* the deficit is mechanistic
+(early internal commitment) and *which direction* it runs (under-react/repeat vs.
+over-react/flip) tells us how to intervene.
+
+### Gap in Existing Work (from literature_review.md)
+- **C1** is well established (Emergent Response Planning, Reasoning-Strength Planning, Future
+  Lens) but those papers do **not isolate RL** — they don't contrast matched base vs RL models.
+- **C2** is studied *behaviorally* (UFO "Try Again", SCoRe, FlipFlop) but **not tied to internal
+  pre-commitment probes**, and the deficit *direction is contested* (RL→under-react vs.
+  widespread over-reaction).
+- **C3** has **no direct precedent**: no work rotates what is held certain across a question to
+  redistribute uncertainty.
+
+### Our Novel Contribution
+1. A **clean matched base→instruct→RL-reasoning contrast** (Qwen2.5-1.5B family) on the *same*
+   items, measuring both (a) internal answer-commitment earliness (probe) and (b) behavioral
+   reactivity to new information — tying C1 to C2 in one study.
+2. The **first test of C3**: a "rotating certainty" protocol on decomposable StrategyQA/HotpotQA
+   items, measuring whether injecting certainty about one hop redistributes uncertainty onto the
+   other, and whether RL models redistribute less.
+
+### Experiment Justification
+- **Exp 1 (Behavioral reactivity, C2):** directly measures "less ability to react to new
+  information" — the core claim — and captures *both* over- and under-reaction (the contested
+  direction the literature warns about).
+- **Exp 2 (Commitment-earliness probe, C1+C2):** supplies the missing mechanistic link — *is*
+  the answer encoded earlier in RL models? Reuses the Emergent-Response-Planning probing protocol.
+- **Exp 3 (Rotating certainty, C3):** tests the novel, untested claim with real models and a
+  logit-entropy measure of where uncertainty lives.
+
+---
+
+## Hypothesis Decomposition
+
+| Claim | Operationalization | Prediction if hypothesis true |
+|-------|--------------------|-------------------------------|
+| C1 | Linear probe on prompt-end hidden state predicts the model's own final answer | probe acc ≫ chance even at prompt position |
+| C2a (internal) | probe accuracy at the *prompt* position, base vs RL | RL > base (commits earlier) |
+| C2b (behavioral) | answer change-rate under generic feedback / challenge / hint | RL revises less to generic feedback; base more reactive |
+| C3 | answer-token entropy under {baseline, fix-hop-A, fix-hop-B} | fixing a hop lowers entropy; reduction is *asymmetric* by hop; RL redistributes less |
+
+**Independent variables:** model post-training stage (base / instruct / RL-reasoning); feedback
+type; which sub-fact is fixed; generation position.
+**Dependent variables:** probe accuracy, answer change/flip rates (i→c, c→i), answer entropy.
+**Controls:** identical prompts/items across models; same decoding; greedy for commitment,
+fixed seed for sampling; same probe architecture and train/test split.
+
+---
+
+## Proposed Methodology
+
+### Models (matched post-training gradient, same family)
+- `Qwen/Qwen2.5-1.5B` — **base** (no RLHF)
+- `Qwen/Qwen2.5-1.5B-Instruct` — **instruct** (SFT + RLHF/DPO)
+- `deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B` — **RL-reasoning** (distilled from R1's RL traces)
+- (scale check if time permits: the 7B trio)
+
+Rationale: same tokenizer/architecture lineage → the only systematic difference is post-training
+intensity, isolating the variable the hypothesis is about. Local HF weights are **required**
+because true *base* models are not served by any chat API.
+
+### Datasets
+- **ARC-Challenge** (1,172 MC) — clean single-letter answer extraction → Exp 1 & 2.
+- **GSM8K** (1,319) — numeric answers → Exp 1 robustness.
+- **StrategyQA** (687, yes/no, has decomposition `facts`) — decomposable → Exp 3.
+- **HotpotQA** (2,000, 2-hop, comparison/bridge) → Exp 3 robustness.
+
+### Experimental Steps
+1. **Exp 1 — Reactivity.** Transcript-style prompt (no chat template, fair across base/RL).
+   Turn 1 answer → inject feedback ∈ {generic-wrong (UFO), challenge "are you sure?" (FlipFlop),
+   correct-hint (real new info)} → Turn 2 answer. Compute per-model change rate, flip rates
+   (i→c, c→i), unique-answer ratio. N≈300 ARC + 200 GSM8K.
+2. **Exp 2 — Commitment probe.** Greedy-generate answer; capture last-token hidden states at
+   prompt-end + first K generated tokens; train logistic-regression probe to predict the model's
+   own final answer letter; report earliness curve and prompt-position accuracy. N≈600 items,
+   80/20 split, mid-layer + last-layer.
+3. **Exp 3 — Rotating certainty.** For decomposable items with two facts (A,B): conditions
+   {baseline, +A given, +B given}. Measure answer-token entropy (binary for yes/no, over choices
+   for MC). Test entropy reduction and its asymmetry; compare across models. N≈300 StrategyQA.
+
+### Baselines
+- Chance / majority for probes; the model's own verbalized confidence where applicable.
+- Within-study baseline = the **base model** for every RL comparison.
+- Exp 1 grounded in UFO (unique-answer ratio) & FlipFlop (flip rate) metrics; Exp 2 in
+  Emergent-Response-Planning probe; Exp 3 vs. the no-fact baseline condition.
+
+### Evaluation Metrics
+- **Reactivity:** answer-change rate, flip rates Δ^{i→c}/Δ^{c→i}, unique-answer ratio.
+- **Pre-commitment:** probe balanced accuracy vs. position (earliness), AUC of earliness curve.
+- **Uncertainty:** answer-token entropy; entropy reduction Δ when a hop is fixed; asymmetry index.
+
+### Statistical Analysis Plan
+- Paired comparisons across items: **Wilcoxon signed-rank** (non-normal rates/entropies) and
+  McNemar for paired binary change. Bootstrap 95% CIs (10k resamples). Effect sizes (Cohen's d /
+  rank-biserial). Significance α=0.05; Holm correction across the model×condition family.
+- Multiple seeds for sampling-based entropy; report mean ± std.
+
+## Expected Outcomes
+- **Supports hypothesis:** RL models show higher prompt-position probe accuracy (earlier
+  commitment), lower change-rate to generic feedback, and smaller / more rigid uncertainty
+  redistribution in Exp 3.
+- **Refutes / complicates:** if base models over-react (FlipFlop pattern) while RL models revise
+  *appropriately*, the deficit is direction-dependent — we report it honestly via the i→c vs c→i
+  split.
+
+## Timeline and Milestones
+1. Env + smoke-test model load (15 min) 2. Shared utils + Exp 1 (45 min) 3. Exp 2 probe (45 min)
+4. Exp 3 (40 min) 5. Analysis + figures (40 min) 6. REPORT.md + README (30 min). Buffer 25%.
+
+## Potential Challenges
+- **Base-model formatting:** mitigated by a uniform transcript prompt + few-shot exemplars and
+  robust answer parsing (regex + last-mention heuristics).
+- **Answer extraction failures:** log parse-failure rate; exclude only with documentation.
+- **GPU memory / busy GPU:** GPU 2 is busy; pin to GPUs 0/1/3; use bf16; 1.5B fits easily.
+- **Contested C2 direction:** designed-for — both flip directions measured.
+
+## Success Criteria
+A complete, reproducible run of all three experiments on real local models with statistical
+tests, an honest base-vs-RL characterization (including null/contradictory results), and
+REPORT.md documenting actual findings.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          LITERATURE REVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+# Literature Review: LLMs Know the Answer They Want to Give
+
+**Hypothesis.** RL-fine-tuned LLMs tend to *pre-plan the end of their next turn*, which gives
+them *less ability to react to new information* than base LLMs. By *rotating what is certain*
+about the answer across a series of questions, it may be possible to force the model to
+*distribute its uncertainty* across different parts of a larger question.
+
+The hypothesis makes three distinct, separately-testable claims:
+- **(C1) Pre-planning exists** — models commit to global properties of their response (its
+  answer, and the location of its turn-ending) before/early in generation.
+- **(C2) RL increases pre-planning and reduces reactivity** — RL fine-tuning sharpens this
+  commitment relative to the base model, degrading the ability to revise given new information.
+- **(C3) Rotating certainty redistributes uncertainty** — manipulating which part of a question
+  is held fixed forces the model to spread uncertainty across the remaining parts.
+
+The literature strongly supports C1, gives partial and somewhat *mixed* support for C2, and
+leaves C3 essentially open — which is where this project's novelty lies.
+
+---
+
+## 1. Research Area Overview
+
+Four threads converge on this hypothesis:
+
+1. **Internal pre-planning / look-ahead (interpretability).** A growing body shows that
+   decoder-only LMs, despite next-token training, encode global attributes of their *entire*
+   upcoming output in early/prompt hidden states. This is the mechanistic substrate the
+   hypothesis depends on.
+2. **Reactivity, revision, and RL training effects.** Work on multi-turn RL, self-correction,
+   and "lost-in-conversation" shows that RL-style post-training can collapse a model's ability
+   to revise — the predicted deficit.
+3. **Sycophancy / change-of-mind (behavioral).** A complementary literature measures how models
+   react (or over-react) to challenges and new information across turns.
+4. **Uncertainty quantification & decomposition.** Methods for measuring and decomposing LLM
+   uncertainty — the toolkit for operationalizing "distributing uncertainty."
+
+---
+
+## 2. Key Papers (by claim)
+
+### C1 — Pre-planning exists (well supported)
+
+- **Emergent Response Planning in LLMs** (Dong et al., ICML 2025; arXiv:2502.06258). Simple MLP
+  probes on the *prompt* hidden state predict the full response's **length, number of reasoning
+  steps, final multiple-choice answer, and eventual correctness/confidence** — all before the
+  first token. Prompts are engineered so the attribute is *not* readable from the immediate next
+  token, ruling out the first-token shortcut. Probing far exceeds the model's own verbalized
+  self-estimate. A three-phase "U-shape" along the generation timeline shows commitment is
+  strongest at the start, dips mid-generation, and recovers near the end. **Instruction-tuned >
+  base** on *structure* attributes (length, steps); content/behavior planning is present even in
+  base models. *This is the single most important supporting paper for C1, and its probing
+  protocol is directly reusable.*
+
+- **On Reasoning Strength Planning in LRMs** (NeurIPS 2025; arXiv:2506.08390). The reasoning-token
+  budget is linearly decodable from the `<think>` activation (Spearman > 0.8) and is encoded as a
+  **single steerable direction** whose L2 norm grows with question difficulty and *causally*
+  controls where the model emits `</think>`. This is the most literal evidence for "pre-plan the
+  end of the turn" — but all subjects are RL/distilled reasoning models, with **no base contrast**.
+
+- **Do Language Models Plan Ahead for Future Tokens?** (Wu et al., COLM 2024; arXiv:2404.00859).
+  Formalizes "pre-caching" vs "breadcrumbs," introduces *myopic training* and the **myopia gap**.
+  Natural-language models mostly use breadcrumbs, but **pre-caching grows with scale** — bigger
+  models plan further ahead.
+
+- **Detecting and Characterizing Planning in LMs** (arXiv:2508.18098). Causal SAE-circuit
+  definition of planning (Future-Token Encoding + Precursor Influence) and a Planning-vs-
+  **Improvisation** ("commit early vs decide late") axis. Notably finds **instruction tuning
+  *selects among* existing plans rather than creating planning**, and that base models can hold
+  **"Competing Plans"** (multiple candidate futures simultaneously) — directly relevant to C3.
+
+- **Future Lens** (Pal et al.; arXiv:2311.04897) is the foundational probing primitive (future
+  tokens linearly decodable from one hidden state). **Internal Planning… Horizon and Branch
+  Awareness** (arXiv:2509.25260) and **What's the plan?** (arXiv:2601.20164) extend implicit-
+  planning probes/steering (e.g., a planned rhyme or answer can be changed by steering the
+  preceding token), and scale them across many models.
+
+### C2 — RL increases pre-planning / reduces reactivity (partial, mixed)
+
+- **A Simple "Try Again" Can Elicit Multi-Turn LLM Reasoning (UFO)** (arXiv:2507.14295). **The
+  strongest direct support.** Single-turn RLVR (PPO, GRPO, DAPO, Dr.GRPO) **collapses revision**:
+  in ~70% of failures the RL model repeats the *identical* answer across 5 turns, and the
+  **unique-answer ratio drops after RL across every method and scale (0.5B–32B)**. Mechanistic
+  account: RL produces a peaked, low-entropy policy, and collision probability ≥ exp(−H) forces
+  repetition. Base/pre-RL models, by contrast, do revise. The fix (UFO) reintroduces reactivity
+  by injecting unary feedback and rewarding answer diversity.
+
+- **Training LMs to Self-Correct via RL (SCoRe)** (Kumar et al., DeepMind; arXiv:2409.12917).
+  Naive RL/SFT causes **"behavior collapse"** — the model locks in its first answer (edit
+  distance ≈ 0, "different-answer frequency" falls during RL). Clean metrics Δ(t1,t2), Δ^{i→c},
+  Δ^{c→i} separate *reacts-and-fixes* from *commits-and-refuses* from *over-reacts-and-breaks*.
+  Importantly, the **base** Gemini here *over-reacts* (Δ = −11%: it flips correct answers), while
+  training pushes toward *not changing* — so the base-vs-RL story is **direction-dependent**.
+
+- **Recursive Introspection (RISE)** (arXiv:2407.18219) — even strong LLMs don't sequentially
+  self-improve even when told they erred; fine-tuning can install the ability. **Lost-in-
+  Conversation / RLAAR** (arXiv:2510.18731) — performance degrades as information is revealed
+  progressively across turns (the literal "react to new information" axis), mitigated by
+  curriculum RL with abstention rewards. **Not All Thoughts Are Generated Equal** (arXiv:2505.11827)
+  — multi-turn RL to compress CoT, quantifying which thoughts matter.
+
+### C2 (behavioral) — sycophancy & change-of-mind (mixed evidence on RL)
+
+- **Are You Sure? The FlipFlop Experiment** (Laban et al.; arXiv:2311.08596). 10 models × 7 tasks
+  × 5 challengers: **46% flip rate, −17% accuracy** when challenged. Crucially, sycophancy is
+  **universal across models trained with and without RLHF** and is **not monotonic in RLHF**
+  (GPT-4/PaLM resist; Claude V1.3/V2 flip most) — this *weakens* a naive "RL causes the deficit"
+  reading and suggests pre-training contributes. Here the failure is *over*-reaction, the inverse
+  of pre-commitment — the two failure modes coexist and depend on model/task.
+
+- **TRUTH DECAY** (arXiv:2503.11656) and **SYCON Bench / Measuring Sycophancy Multi-turn**
+  (arXiv:2505.23840; metrics Turn-of-Flip, Number-of-Flip) quantify sycophancy over extended
+  dialogues. **Overconfidence/Underconfidence & Change of Mind** (arXiv:2507.03120) elicits
+  confidence *without memory* of the prior judgment, revealing a **choice-supportive bias** and
+  resistance to changing one's mind — almost a literal restatement of "knows the answer it wants
+  to give."
+
+### C3 — Rotating certainty / distributing uncertainty (largely open)
+
+- **CoT-UQ** (arXiv:2502.17214): response-wise (not prompt-wise) uncertainty via reasoning steps;
+  flags overconfidence when reasoning. **Uncertainty Profiles** (arXiv:2505.07309): decomposes
+  LLM uncertainty into four sources — the conceptual basis for "uncertainty across parts." No
+  paper found directly tests *rotating which part of a question is fixed* to redistribute
+  uncertainty; the closest mechanistic hook is the **"Competing Plans"** probe from Detecting-
+  Planning and the answer-confidence probe from Emergent Response Planning.
+
+---
+
+## 3. Common Methodologies
+
+- **Probing pre-commitment:** train small (MLP/linear/Lasso) probes on hidden states — at the
+  prompt position or at a control token (`<think>`) — to predict full-response attributes (answer,
+  length, correctness). (Emergent Response Planning; Reasoning Strength Planning; Future Lens.)
+- **Causal steering / ablation:** add or subtract a difference-in-means direction (`h' = h + λr`)
+  or ablate SAE latents, then regenerate, to test whether a plan is *causal*. (Reasoning Strength
+  Planning; plan_trace's FTE+PI; What's the plan?)
+- **Multi-turn reactivity harnesses:** convert single-turn data into multi-turn episodes with
+  feedback ("Try Again", "Are you sure?", challengers) and measure revision. (UFO; SCoRe;
+  FlipFlop; SYCON; RLAAR.)
+- **Behavior-collapse / repetition metrics:** unique-answer ratio, edit-distance ratio,
+  different-answer frequency, output entropy.
+
+## 4. Standard Baselines
+
+- **Base vs instruction-tuned vs RL-tuned** of the *same* model family (the central contrast our
+  hypothesis needs). Matched pairs exist: **Qwen2.5-{0.5B,1.5B,7B,14B,32B}** vs SimpleRL-Zoo
+  (GRPO) / Oat-Zero (Dr.GRPO) / DAPO; **DeepSeek-R1-Distill-Qwen/Llama** vs their Qwen2.5/Llama-3
+  bases; Qwen2.5-3B-Instruct vs the released Qwen2.5-3B-UFO.
+- Method baselines for reactivity: Self-Refine, STaR, Pair-SFT, RISE, SCoRe, UFO.
+- Probing baselines: random/majority; the model's own verbalized self-estimate; Future-Lens
+  affine probe.
+
+## 5. Evaluation Metrics
+
+- **Reactivity / revision:** Δ(t1,t2), Δ^{i→c}, Δ^{c→i} (SCoRe); FlipFlop effect Δ_FF and flip
+  rates (Any/Correct/Wrong→Flip); Turn-of-Flip, Number-of-Flip (SYCON); unique/effective-answer
+  ratio, AvgTurns, Succ@k vs Pass@k (UFO).
+- **Pre-commitment / planning:** probe accuracy (Spearman/Kendall/Pearson for continuous,
+  balanced F1 for categorical); *how early* the answer becomes decodable along the generation
+  timeline; myopia gap; FTE+PI satisfaction; number of Competing Plans.
+- **Uncertainty:** output entropy/collision probability; calibration (ECE); CoT-UQ response-wise
+  scores; source-decomposed uncertainty profiles.
+
+## 6. Datasets in the Literature
+
+- **Math/reasoning:** GSM8K, MATH/MATH500, AIME2024, OlympiadBench, TheoremQA, GPQA.
+- **Multiple-choice / commonsense:** MMLU(/-STEM/-Pro), ARC-Challenge, CommonsenseQA, SocialIQA,
+  MedMCQA, SciQ, TruthfulQA, PIQA, LAMBADA.
+- **Multi-hop / decomposable QA:** HotpotQA, ConcurrentQA, StrategyQA (ideal for C3).
+- **Fact-checking / stance:** CREAK, FEVER, SummEdits, LegalBench-CCQA.
+- **Code:** MBPP/MBPP-R, HumanEval.
+- **Open-ended:** UltraChat, AlpacaEval (for length planning), TinyStories/ROCStories.
+
+*Downloaded locally* (samples committed): GSM8K (test), HotpotQA (distractor val sample),
+ARC-Challenge (test), StrategyQA (test). See `datasets/README.md`.
+
+## 7. Gaps and Opportunities
+
+1. **No clean base-vs-RL test of reactivity *via pre-planning probes*.** Pre-planning work
+   (Emergent Response Planning, Reasoning Strength Planning) does not isolate RL; RL-reactivity
+   work (UFO, SCoRe) is behavioral and does not probe internal pre-commitment. **Combining the
+   two** — probe how early the answer is committed in matched base vs RL models, and correlate
+   that with behavioral non-reactivity — is the central open experiment (C1+C2).
+2. **The deficit direction is contested.** UFO/SCoRe show RL → *under*-reaction (commit/repeat);
+   FlipFlop/sycophancy work shows widespread *over*-reaction, not RLHF-monotonic. A careful study
+   must measure *both* directions and the conditions (model, task, challenge type) that select
+   between them — this is a real risk to a naive C2 and should be designed for, not assumed.
+3. **C3 is essentially untested.** No work rotates what is held certain across a question series to
+   redistribute uncertainty. The "Competing Plans" probe and the answer-confidence probe provide
+   the mechanism to *measure* whether uncertainty actually spreads.
+4. **Verbalization gap.** Models encode far more about their plan than they can state — so C3
+   should be evaluated with *probes*, not just self-reported confidence.
+
+## 8. Recommendations for Our Experiment
+
+- **Models (matched base/RL pairs):** start with Qwen2.5-{1.5B,7B} base vs SimpleRL-Zoo (GRPO)
+  and vs DeepSeek-R1-Distill-Qwen; add Qwen2.5-3B-Instruct vs Qwen2.5-3B-UFO for the reactivity
+  axis. These give same-architecture base/RL contrasts on commodity GPUs.
+- **Probes (C1/C2):** reuse `LRM-plans-CoT`'s `<think>`-activation probe + difference-in-means
+  steering, and Emergent-Response-Planning's prompt-position MLP probes, but **extend the target
+  from length to the answer**, and **compare base vs RL** + measure *how early* the answer is
+  decodable. Use `plan_trace` (FTE+PI) where SAEs are available (Gemma-2-2B base/`-it`).
+- **Behavioral reactivity (C2):** use the UFO "Try Again" harness and SCoRe's Δ-metrics, plus the
+  FlipFlop challenger protocol, on the same models. Report unique-answer ratio, Δ^{c→i}/Δ^{i→c},
+  and flip rates so over- vs under-reaction are both visible.
+- **Rotating certainty (C3):** on decomposable multi-hop items (HotpotQA, StrategyQA) and
+  multi-choice (ARC), construct question variants that fix different sub-answers as "given," then
+  measure (a) probe-estimated answer commitment and (b) entropy / Competing-Plans count on the
+  remaining parts. Test whether holding part A certain *raises* measured uncertainty on part B.
+- **Metrics:** primary = answer-commitment-earliness (probe) and unique-answer-ratio /
+  Δ-metrics (behavior); secondary = output entropy, ECE, FlipFlop effect. Always report the
+  base-vs-RL delta, and the over- vs under-reaction breakdown.
+- **Decoding:** greedy/temperature-0 for deterministic commitment comparisons; a temperature
+  sweep (per FlipFlop) to bound sensitivity.
+
+**Bottom line.** C1 is on firm ground and immediately reusable infrastructure exists. The
+project's contribution is to (i) supply the missing base-vs-RL pre-planning-probe contrast tying
+C1 to C2, while honestly characterizing the over- vs under-reaction tension the literature
+exposes, and (ii) be the first to test C3 — rotating certainty to redistribute uncertainty —
+using probes rather than self-report.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          PAPER REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+Generate a complete academic paper with the following structure:
+
+1. TITLE
+   - Clear, specific, informative
+   - Should convey main finding or contribution
+
+2. AUTHOR
+   - Use this exact author line in the \author{} block: Ari Holtzman and NeuriCo
+
+3. ABSTRACT (150-250 words)
+   - Problem statement
+   - Approach
+   - Key results
+   - Significance
+
+4. INTRODUCTION
+   - Research problem and motivation
+   - Gap in existing work
+   - Our contribution (be specific)
+   - Paper organization
+
+5. RELATED WORK
+   - Organized by theme/approach
+   - Position our work relative to prior work
+   - Cite papers from literature review
+
+6. METHODOLOGY
+   - Clear description of approach
+   - Experimental setup
+   - Datasets used
+   - Evaluation metrics
+   - Baselines
+
+7. RESULTS
+   - Present results with tables and figures
+   - Statistical analysis
+   - Comparison to baselines
+   - Ablation studies (if applicable)
+
+8. DISCUSSION
+   - Interpretation of results
+   - Limitations
+   - Broader implications
+
+9. CONCLUSION
+   - Summary of contributions
+   - Key findings
+   - Future work
+
+10. REFERENCES
+   - BibTeX format
+   - All cited papers
+
+════════════════════════════════════════════════════════════════════════════════
+                          OUTPUT FORMAT
+════════════════════════════════════════════════════════════════════════════════
+
+Create a MODULAR LaTeX project with the following directory structure:
+
+paper_draft/
+├── main.tex              # Main file that imports all sections
+├── references.bib        # BibTeX references
+├── sections/
+│   ├── abstract.tex      # Abstract content
+│   ├── introduction.tex  # Introduction section
+│   ├── related_work.tex  # Related work section
+│   ├── methodology.tex   # Methodology section
+│   ├── results.tex       # Results section
+│   ├── discussion.tex    # Discussion section
+│   └── conclusion.tex    # Conclusion section
+├── figures/              # Directory for any generated figures
+├── tables/               # Directory for complex standalone tables
+└── appendix/             # Directory for appendix sections (if needed)
+
+INSTRUCTIONS:
+1. First, create the directory structure above (mkdir -p paper_draft/sections paper_draft/figures paper_draft/tables paper_draft/appendix)
+2. Write main.tex using the EXACT preamble for NEURIPS:
+
+   \documentclass{article}
+   \usepackage[final]{neurips_2025}  % NEURIPS style (neurips_2025.sty is in paper_draft/)
+   \usepackage[hidelinks]{hyperref}  % REQUIRED: clickable links
+   \usepackage{booktabs}  % REQUIRED: professional tables
+   \usepackage{graphicx}
+   \usepackage{amsmath,amssymb}
+
+   % Import command files
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+   % Use this bibliography style:
+   \bibliographystyle{plainnat}
+
+   \author{Ari Holtzman and NeuriCo}
+
+   - Use \input{sections/...} to include each section
+   - Use \bibliography{references} for references
+3. Write each section file with COMPLETE content (no placeholders)
+4. Each section file should include its \section{} command
+5. Write references.bib with all citations in BibTeX format
+6. After writing all files, compile the paper:
+   cd paper_draft && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+This modular structure allows humans to easily:
+- Edit individual sections without navigating a large file
+- Track changes per section
+- Reuse sections across different paper versions
+
+════════════════════════════════════════════════════════════════════════════════
+                          QUALITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+- Academic tone throughout
+- All claims must be supported by data from the experiment report
+- Proper citations using \cite{} commands
+- Clear figures and tables with proper captions
+- NO placeholder text - every section must have real content
+- The paper MUST compile without errors
+- If compilation fails, debug and fix the LaTeX errors
+
+════════════════════════════════════════════════════════════════════════════════
+                          LAB WRITING STYLE
+════════════════════════════════════════════════════════════════════════════════
+
+Follow these lab-specific conventions to match our paper style:
+
+1. LANGUAGE STYLE:
+   - Use active voice: "We propose", "We examine", "We focus on"
+   - Be direct and confident: "Our main question is...", "We hypothesize that..."
+   - State things clearly and simply - prefer plain language over jargon
+   - Use bold questions as paragraph organizers: {\bf what is X?}
+   - Include specific quantitative claims: "8.97% over baseline"
+   - Avoid fancy wording: "utilize" → "use", "facilitate" → "help"
+
+2. INTRODUCTION STRUCTURE:
+   - Engaging hook (get to the point quickly)
+   - Problem importance
+   - Gap identification
+   - Your approach with method figure reference
+   - Quantitative preview of results
+   - Contribution bullets (3-4 items, action verbs)
+
+3. CONTRIBUTION LISTS:
+   \begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+       \item We propose...
+       \item We conduct...
+       \item We complement...
+   \end{itemize}
+
+4. MODULAR COMMANDS STRUCTURE:
+   Command templates are pre-copied to paper_draft/commands/:
+   - math.tex: Math notation macros
+   - general.tex: Formatting macros
+   - macros.tex: Project-specific term definitions (customize this for your paper)
+
+   In main.tex, include:
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+5. REFERENCE CONVENTIONS:
+   Use reference macros from math.tex:
+   - \figref{fig:name} for "figure 1" (lowercase, in-sentence)
+   - \Figref{fig:name} for "Figure 1" (capitalized, start of sentence)
+   - \secref{sec:name} for "section 2"
+
+6. TEXT FORMATTING:
+   - Use \para{Header text} for bold paragraph headers
+   - Define method/dataset names with \textsc and \xspace:
+     \newcommand{\methodname}{\textsc{MethodName}\xspace}
+
+7. TABLE FORMATTING:
+   - Use booktabs package (no vertical lines)
+   - Use \resizebox{\textwidth}{!}{...} for wide tables
+   - Use @{} to remove padding at table edges
+   - Use \cmidrule(lr){x-y} for sub-headers
+   - Use \textsc{} for dataset/method names in headers
+   - Bold best results with {\bf ...}
+
+8. FIGURE FORMATTING:
+   - Use 0.32\textwidth for 3-column subfigures
+   - Use 0.95\linewidth for full-width figures
+   - Use \input{figures/legend} for shared legends
+   - Write self-contained captions explaining key observations
+
+9. RESULTS PRESENTATION:
+   - Define \increase and \decrease for colored arrows (green up, red down)
+   - Bold best results in tables
+   - Report confidence intervals when available
+
+10. ALGORITHM STYLING:
+    - Use algpseudocode with [noend]
+    - Use \triangleright for comments
+
+11. HYPERLINKS (REQUIRED):
+    - Always use \usepackage[hidelinks]{hyperref} or with colored links
+    - All citations, section refs, figure refs, table refs must be clickable
+    - This is essential for reader navigation
+
+════════════════════════════════════════════════════════════════════════════════
+                          WORKFLOW: REVIEW AND REFLECT
+════════════════════════════════════════════════════════════════════════════════
+
+Before calling finish, you MUST complete these review steps:
+
+1. REVIEW RESOURCES (at the start):
+   - Read .claude/skills/paper-writer/SKILL.md for detailed guidance
+   - Study templates/paper_writing/lab_style_guide.md for style conventions
+   - Browse paper_examples/ for formatting and language patterns
+
+2. SELF-REFLECTION (before finishing):
+   After writing all sections, review your work against these criteria:
+
+   LANGUAGE CHECK:
+   - [ ] Is the writing clear and jargon-free?
+   - [ ] Are claims specific with quantitative support?
+   - [ ] Is active voice used throughout?
+
+   FORMATTING CHECK:
+   - [ ] Does main.tex include \input{commands/math}, \input{commands/general}, \input{commands/macros}?
+   - [ ] Is hyperref package included for clickable references?
+   - [ ] Do tables use booktabs (no vertical lines)?
+   - [ ] Are best results bolded in tables?
+   - [ ] Are figures/tables properly captioned?
+
+   STRUCTURE CHECK:
+   - [ ] Does introduction follow: hook → importance → gap → approach → preview → contributions?
+   - [ ] Are contribution bullets specific with action verbs?
+   - [ ] Does the paper compile without errors?
+
+3. FIX ISSUES:
+   - Address any issues found in the self-reflection
+   - Re-compile and verify the PDF looks correct
+
+Only after completing this review should you consider the paper finished.

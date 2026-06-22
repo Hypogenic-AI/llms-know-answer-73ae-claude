@@ -1,0 +1,7 @@
+# Exclude large data files; keep docs and small samples
+*
+!.gitignore
+!README.md
+!**/README.md
+!**/samples.json
+!_download_report.json

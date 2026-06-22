@@ -1,0 +1,37 @@
+\section{Implementation Details}
+\label{app:impl}
+
+\para{Hardware and decoding.} All models are run locally in bf16 on a single NVIDIA RTX
+A6000. Commitment measures (Experiments~1 and 2) use greedy decoding; entropy
+(Experiment~3) uses temperature $0.7$ sampling with $K=6$ samples per item. Random seeds are
+fixed at 42 (123 for the Experiment~3 sampling). Generation budgets are capped at a fixed
+maximum token count per item (640 tokens for the reasoning model, which occasionally truncates
+its chain of thought on \arc).
+
+\para{Interfaces.} The base model has no chat template and is prompted with a plain transcript
+format; the instruct and reasoning models use their respective chat templates and are run
+multi-turn. This difference is inherent to comparing a base model against post-trained
+descendants and is discussed as a confound for absolute reactivity rates in
+\secref{sec:discussion}; the probe of Experiment~2 is measured identically across all models.
+
+\para{Probe.} The Experiment~2 probe is a balanced logistic regression trained with an 80/20
+train/test split on last-token hidden states, evaluated at the prompt-end position across all
+layers and along a mid-layer generation trajectory. The target is the model's own parsed final
+answer letter (A--D), so a model's task accuracy does not bias the measurement.
+
+\para{Statistics.} Confidence intervals are bootstrap 95\% intervals over 10k resamples.
+Experiment~1 uses Fisher exact tests on the $2\times2$ change/no-change contingency tables;
+Experiment~3 uses Wilcoxon signed-rank tests for paired entropy reductions and Mann--Whitney
+$U$ for cross-model comparisons.
+
+\section{Data and Parse Failures}
+\label{app:data}
+
+\arc (science multiple-choice, single-letter answers) is used for Experiments~1 and 2; \gsm
+(numeric) is used for the Experiment~1 robustness check; \strat (decomposable yes/no with a
+\texttt{facts} chain) is used for Experiment~3, with the fact chain split into two hops at the
+sentence level. Answer parsing uses a regex plus last-mention heuristic. Parse-failure rates
+are at most $6\%$ and are concentrated in the reasoning model (whose long chains occasionally
+truncate before emitting a final letter). Failures are logged and reported, never silently
+dropped. Raw model outputs are released under \texttt{results/} and figures under
+\texttt{figures/}.

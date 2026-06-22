@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "stages": {
+    "resource_finder": {
+      "success": true,
+      "completion_marker": "/workspaces/llms-know-answer-73ae-claude/.resource_finder_complete",
+      "outputs": {
+        "literature_review": "/workspaces/llms-know-answer-73ae-claude/literature_review.md",
+        "resources_catalog": "/workspaces/llms-know-answer-73ae-claude/resources.md",
+        "papers_dir": "/workspaces/llms-know-answer-73ae-claude/papers",
+        "datasets_dir": "/workspaces/llms-know-answer-73ae-claude/datasets",
+        "code_dir": "/workspaces/llms-know-answer-73ae-claude/code"
+      },
+      "log_file": "/workspaces/llms-know-answer-73ae-claude/logs/resource_finder_claude.log",
+      "transcript_file": "/workspaces/llms-know-answer-73ae-claude/logs/resource_finder_claude_transcript.jsonl",
+      "elapsed_time": 1867.4430577754974
+    },
+    "experiment_runner": {
+      "success": true,
+      "return_code": 0,
+      "elapsed_time": 5690.475685119629,
+      "log_file": "/workspaces/llms-know-answer-73ae-claude/logs/execution_claude.log",
+      "transcript_file": "/workspaces/llms-know-answer-73ae-claude/logs/execution_claude_transcript.jsonl"
+    }
+  },
+  "work_dir": "/workspaces/llms-know-answer-73ae-claude"
+}

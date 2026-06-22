@@ -1,0 +1,54 @@
+\section{Related Work}
+\label{sec:related}
+
+Our study sits at the intersection of four threads: internal pre-planning in language models,
+the effect of RL post-training on revision, behavioral sycophancy, and uncertainty
+decomposition. We organize related work by these themes and position our contribution against
+each.
+
+\para{Internal pre-planning (supports C1).} A line of interpretability work shows that
+decoder-only LMs encode global properties of their \emph{entire} upcoming response in early
+hidden states, despite next-token training. \citet{dong2025emergent} train simple probes on
+the prompt hidden state that predict a response's length, number of reasoning steps, final
+multiple-choice answer, and eventual correctness---before the first token---and report a
+``U-shaped'' commitment trajectory along generation. \citet{pal2023future} establish the
+foundational primitive that future tokens are linearly decodable from a single hidden state,
+and \citet{wu2024plan} formalize ``pre-caching'' versus ``breadcrumbs'' and show planning
+grows with scale. \citet{reasoningstrength2025} show that the reasoning-token budget of a
+reasoning model is linearly decodable and steerable, the most literal evidence for
+``planning the end of the turn''---but, like the rest of this thread, their subjects are all
+RL/distilled reasoning models with \emph{no base contrast}. \citet{bigelow2025planning} give
+a causal, circuit-level definition of planning and find that instruction tuning \emph{selects
+among} existing plans rather than creating planning, and that base models can hold
+``competing plans.'' We reuse the prompt-position probing protocol of
+\citet{dong2025emergent}, but extend the target to the model's \emph{own} answer and, crucially,
+run it across a matched base-to-RL gradient---the comparison this thread omits.
+
+\para{RL post-training and revision (C2, contested).} \citet{ufo2025} provide the strongest
+direct support for the under-reaction reading: single-turn RLVR collapses revision, with RL
+models repeating the identical answer across turns and the unique-answer ratio dropping after
+RL across methods and scales. \citet{kumar2024score} similarly find ``behavior collapse,''
+where naive RL locks in the first answer, and introduce the clean $\Delta^{i\rightarrow c}$ /
+$\Delta^{c\rightarrow i}$ decomposition we adopt to separate beneficial fixes from harmful
+flips. Yet the same work notes the base model can \emph{over}-react, making the direction
+model-dependent. We connect this behavioral literature to an internal probe on matched models,
+and find that---measured internally---it is the base model, not the RL model, that
+pre-commits.
+
+\para{Sycophancy and change-of-mind (C2, behavioral).} \citet{laban2023flipflop} run
+challenger prompts (``are you sure?'') across ten models and report a 46\% flip rate and
+$-17\%$ accuracy, with sycophancy \emph{universal} across models trained with and without
+RLHF and \emph{not} monotonic in RLHF---a direct warning against a naive ``RL causes the
+deficit'' reading. This over-reaction failure is the mirror image of pre-commitment; the two
+coexist and are selected by model and task. Our two-task design (\arc and \gsm) reproduces
+both ends of this axis within one family.
+
+\para{Uncertainty decomposition (C3, open).} Methods exist for measuring and decomposing LLM
+uncertainty into sources~\citep{uncertaintyprofiles2025} and for response-wise uncertainty
+over reasoning steps, but no prior work rotates which part of a decomposable question is held
+certain to test whether residual uncertainty redistributes. We introduce that protocol and
+report the first measurements of it.
+
+\para{Summary.} Prior work establishes that planning exists (C1) and that revision can
+collapse \emph{or} over-fire after training (C2), but never on a matched base-vs-RL probe
+contrast, and never tests rotating certainty (C3). We close all three gaps in one study.

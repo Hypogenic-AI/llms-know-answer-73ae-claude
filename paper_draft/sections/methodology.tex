@@ -1,0 +1,98 @@
+\section{Methodology}
+\label{sec:method}
+
+Our design isolates one variable---post-training intensity---and measures its effect on
+internal answer commitment, behavioral reactivity, and uncertainty redistribution on
+\emph{identical} items.
+
+\subsection{Models: a matched post-training gradient}
+\label{sec:models}
+
+We use three checkpoints from one model lineage, sharing architecture and tokenizer so that
+the systematic difference between them is the amount and type of post-training
+(\tabref{tab:models}). The \base model is pretrained only; \instruct adds supervised
+fine-tuning plus RLHF/DPO; and \rlm is distilled from DeepSeek-R1's RL reasoning traces.
+Because true base models are not served by any chat API, all weights are run locally. Each
+model is used in its \emph{native} interface: \base receives a plain transcript prompt (it
+has no chat template), while \instruct and \rlm use their own chat templates. We run bf16
+weights on an NVIDIA RTX A6000, with greedy decoding for commitment measures and temperature
+$0.7$ sampling for entropy. Seeds are fixed (42; 123 for Experiment~3 sampling).
+
+\begin{table}[t]
+    \centering
+    \caption{The matched post-training gradient. All three models share the \qwenbase
+    architecture and tokenizer lineage, so post-training stage is the only systematic
+    difference.}
+    \label{tab:models}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}llp{6.0cm}@{}}
+        \toprule
+        \textbf{Key} & \textbf{HuggingFace id} & \textbf{Post-training stage} \\
+        \midrule
+        \base     & \texttt{Qwen/Qwen2.5-1.5B}                  & none (pretrained only) \\
+        \instruct & \texttt{Qwen/Qwen2.5-1.5B-Instruct}         & SFT + RLHF/DPO \\
+        \rlm      & \texttt{deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B} & distilled from R1's RL reasoning traces \\
+        \bottomrule
+    \end{tabular}%
+    }
+\end{table}
+
+\subsection{Datasets}
+\label{sec:data}
+
+We use three pre-gathered local datasets chosen to fit each experiment. \arc (science
+multiple-choice) gives clean single-letter answers and is used for the reactivity and probe
+experiments. \gsm (grade-school math) gives numeric answers and serves as a robustness check
+for reactivity. \strat (decomposable yes/no questions with an accompanying \texttt{facts}
+chain) supports the rotating-certainty experiment, because each item can be split into two
+hops.
+
+\subsection{Experiment 1: behavioral reactivity (C2b)}
+\label{sec:exp1}
+
+We convert each single-turn item into a two-turn episode: the model answers, feedback is
+injected, and the model answers again. Feedback is one of three types. \generic is
+content-free pushback (``that's incorrect, try again''), following the ``Try
+Again''/UFO protocol; \challenge is the FlipFlop-style ``are you sure?''; and \hint is genuine
+information pointing toward the correct answer. We report the \emph{answer change rate} from
+turn~1 to turn~2 and, to reveal \emph{how} a model reacts, the directional flip rates
+$\Delta^{i\rightarrow c}$ (a wrong answer corrected to right---a beneficial fix) and
+$\Delta^{c\rightarrow i}$ (a right answer broken into wrong---harmful over-reaction). We run
+$N=200$ \arc items per feedback type and $N=150$ \gsm items as a robustness check. Note that
+the \gsm hint is non-informative (``re-check your arithmetic''), so on \gsm all three feedback
+types probe reaction to \emph{content-free} nudges; we flag this when interpreting.
+
+\subsection{Experiment 2: commitment-earliness probe (C1, C2a)}
+\label{sec:exp2}
+
+We greedily generate each model's answer, parse the model's \emph{own} final letter, and
+train a balanced logistic-regression probe (80/20 split) to predict that letter from hidden
+states. We probe two locations: the \textbf{prompt-end} hidden state (across all layers),
+which measures how much of the answer is pre-encoded \emph{before} generation, and a
+mid-layer trajectory \emph{along} the generation timeline, which measures how early the answer
+becomes decodable. Probe accuracy at the prompt position far above the four-way chance level
+($0.25$) indicates the answer is pre-encoded. Because the probe targets the model's own
+answer rather than the gold answer, a model's low task accuracy does not bias the measurement.
+We use $N=440$ four-way (A--D) \arc items.
+
+\subsection{Experiment 3: rotating certainty (C3)}
+\label{sec:exp3}
+
+For each \strat item we split the \texttt{facts} chain into two hops, $A$ and $B$. We then
+compare three conditions: \texttt{baseline} (neither hop given), \texttt{+A} (hop $A$ held
+certain in the prompt), and \texttt{+B} (hop $B$ held certain). Our uncertainty measure is the
+predictive binary entropy of the yes/no answer, estimated from $K=6$ samples per item, which
+is model-agnostic and does not depend on logit access. We report $H$(baseline), $H$(+A),
+$H$(+B), the signed reductions $\Delta H$, and paired significance. A reduction in entropy
+when a hop is fixed indicates uncertainty was \emph{redistributed} from that hop onto the rest
+of the question. We run $N=120$ items.
+
+\subsection{Baselines and statistics}
+\label{sec:stats}
+
+The within-study baseline for every comparison is the \base model. Probe accuracy is compared
+against the random/majority chance level ($0.25$ for four-way \arc). We report bootstrap 95\%
+confidence intervals (10k resamples), Fisher exact tests for the categorical change rates in
+Experiment~1, Wilcoxon signed-rank tests for the paired entropy reductions in Experiment~3,
+and Mann--Whitney $U$ for cross-model comparisons. Parse-failure rates are logged ($\leq6\%$,
+concentrated in the reasoning model) and reported rather than silently dropped.
